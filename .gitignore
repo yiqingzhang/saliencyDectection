@@ -1,4 +1,76 @@
+# MATLAB
 *.asv
-*~
+*.m~
+*.mex*
+*.mat
+*.fig
+*.p
+*.slx.autosave
+slprj/
+*.autosave
+
+# Compiled MEX files
+*.mexa64
+*.mexmaci64
+*.mexw64
 *.mexw32
-testset
+*.mexglx
+
+# Generated documentation
+html/
+latex/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+
+# Output and results (keep structure, ignore content)
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.ppm
+
+# But keep example images and result images
+!assets/images/**/*.jpg
+!assets/images/**/*.png
+!assets/images/**/*.jpeg
+!assets/results/**/*.png
+!assets/results/**/*.csv
+!docs/**/*.png
+!docs/**/*.jpg
+
+# Keep specific example images
+!examples/**/*.jpg
+!examples/**/*.png
+
+# Backup files
+*.bak
+*~
+
+# Cache
+cache/
+__pycache__/

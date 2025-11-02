@@ -1,17 +1,34 @@
-function [ BW_with_biggest_CC ] = detect_RC( im  )
-%detect_HC this function perform the saliency detection using histogram
-%based method, this is a wrapper function
-%   im : is the input image to be detected
-% BW_with_biggest_CC : is the output binary 
-% image with the detection result marked with 1
+function [BW_with_biggest_CC] = detect_RC(im)
+% DETECT_RC - Region-based Contrast (RC) saliency detection
+%
+% This function performs salient region detection using the Region-based
+% Contrast method from Cheng et al., CVPR 2011. This method segments the
+% image into regions and computes saliency based on region-level contrast.
+%
+% Syntax:
+%   BW_with_biggest_CC = detect_RC(im)
+%
+% Inputs:
+%   im - Input RGB image (H x W x 3 uint8 array)
+%
+% Outputs:
+%   BW_with_biggest_CC - Binary mask of the most salient region (H x W logical array)
+%
+% Reference:
+%   Ming-Ming Cheng, Guo-Xin Zhang, Niloy J. Mitra, Xiaolei Huang, Shi-Min Hu
+%   "Global Contrast based Salient Region Detection", IEEE CVPR 2011
+%
+% Author: Implementation based on Cheng et al. paper
+% Date: 2011
 
-addpath('Dependencies/RGB2Lab')
+% Add path to dependencies
+addpath(fullfile(fileparts(fileparts(mfilename('fullpath'))), 'Dependencies', 'RGB2Lab'))
 
-% Compile the code of Felzenszwalb and Huttenlocher, IJCV 2004.
-if(~exist('mexFelzenSegmentIndex'))
-    fprintf('Compiling the segmentation algorithm of:\n');
-
-    mex Dependencies/FelzenSegment/mexFelzenSegmentIndex.cpp -output mexFelzenSegmentIndex;
+% Compile the Felzenszwalb and Huttenlocher segmentation algorithm (IJCV 2004)
+if ~exist('mexFelzenSegmentIndex', 'file')
+    fprintf('Compiling the segmentation algorithm of Felzenszwalb and Huttenlocher...\n');
+    depPath = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'Dependencies', 'FelzenSegment');
+    mex(fullfile(depPath, 'mexFelzenSegmentIndex.cpp'), '-output', 'mexFelzenSegmentIndex');
 end
 
 

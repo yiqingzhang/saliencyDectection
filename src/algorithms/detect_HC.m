@@ -1,10 +1,29 @@
-clc;clear;close all;
-addpath('Dependencies/RGB2Lab')
-addpath('pic')
-tic
-im = imread('5.jpg');
+function [BW_with_biggest_CC] = detect_HC(im)
+% DETECT_HC - Histogram-based Contrast (HC) saliency detection
+%
+% This function performs salient region detection using the Histogram-based
+% Contrast method from Cheng et al., CVPR 2011.
+%
+% Syntax:
+%   BW_with_biggest_CC = detect_HC(im)
+%
+% Inputs:
+%   im - Input RGB image (H x W x 3 uint8 array)
+%
+% Outputs:
+%   BW_with_biggest_CC - Binary mask of the most salient region (H x W logical array)
+%
+% Reference:
+%   Ming-Ming Cheng, Guo-Xin Zhang, Niloy J. Mitra, Xiaolei Huang, Shi-Min Hu
+%   "Global Contrast based Salient Region Detection", IEEE CVPR 2011
+%
+% Author: Implementation based on Cheng et al. paper
+% Date: 2011
 
+% Add path to RGB2Lab conversion utility
+addpath(fullfile(fileparts(fileparts(mfilename('fullpath'))), 'Dependencies', 'RGB2Lab'))
 
+% Step 1: Color quantization - reduce RGB space to 12x12x12 discrete colors
 quant_im = zeros(size(im));
 for k = 1:3
     for i = 1:size(quant_im,1) 
@@ -16,18 +35,18 @@ end
 quant_im = uint8(quant_im);
 quant_im(quant_im==0) = 1;
 
-%show the image after quantization
+% Convert quantized image to displayable format
 quant_im_minus1 = quant_im - 1;
 quant_im_show = quant_im_minus1 * 23;
 
-
-
+% Step 2: Convert to LAB color space for perceptual color difference
 lab = RGB2Lab(quant_im_show);
-%begin to count
+
+% Step 3: Build color histogram and LAB color space
 countSpace = zeros(12,12,12);
 
 labSpace = cell(12,12,12);
-changeColorSpace = cell(12,12,12);%this part mark if the colour space need to be change
+changeColorSpace = cell(12,12,12);  % Maps rare colors to main colors
 for i = 1:12
     for j = 1:12
         for k = 1:12
@@ -46,10 +65,11 @@ for i = 1:size(im,1)
     end
 end
 
+% Step 4: Identify main colors (covering 95% of pixels) and rare colors
 [sortedArray,rank] = sort(countSpace(:),'descend');
 totalPixelNum = size(im,1) * size(im,2);
 sumPixel = 0;
-pixelThreshold = 0.95;
+pixelThreshold = 0.95;  % Keep colors that cover 95% of image
 totalPixelThreshold = floor(totalPixelNum * pixelThreshold);
 
 for i = 1:length(sortedArray)
@@ -61,7 +81,7 @@ for i = 1:length(sortedArray)
     end
 end
 
-%we use the value of i from the last part
+% Identify rare colors (remaining 5%)
 for j = i + 1:length(sortedArray)
     if(sortedArray(j) == 0)
         break
@@ -71,7 +91,7 @@ for j = i + 1:length(sortedArray)
     
 end
 
-%replace each rare colour to main colour
+% Step 5: Replace each rare color with the nearest main color in LAB space
 for i = 1:size(rareColorList,1)
     tmp = rareColorList(i,1:3);
     I = tmp(1);
@@ -90,11 +110,11 @@ for i = 1:size(rareColorList,1)
 
         diffList(j) = norm(theDiff);
     end
-    [sortedList,diffListRank] = sort(diffList);
+    [~,diffListRank] = sort(diffList);
     substitudeColorRank = diffListRank(1);
     substitudeColor = mainColorList(substitudeColorRank,1:3);
     changeColorSpace{I,J,K} = substitudeColor;
-    %update the count space
+    % Update the count space
     II = substitudeColor(1);
     JJ = substitudeColor(2);
     KK = substitudeColor(3);
@@ -102,7 +122,7 @@ for i = 1:size(rareColorList,1)
     countSpace(I,J,K) = 0;
 end
 
-%replace the original picture
+% Step 6: Apply color reduction to the quantized image
 quant_im_reduce = quant_im;
 for i = 1:size(quant_im,1)
     for j = 1:size(quant_im,2)
@@ -115,11 +135,10 @@ for i = 1:size(quant_im,1)
         quant_im_reduce(i,j,3) = newColor(3);
     end
 end
-quant_im_reduce_toshow = (quant_im_reduce - 1) * 23;
 
 
-
-%begin to calculate the saliency
+% Step 7: Calculate saliency for each main color
+% Saliency is based on color contrast weighted by color frequency
 frequencyList = zeros(size(mainColorList,1),1);
 for i = 1:size(mainColorList,1)
     tmp = mainColorList(i,1:3);
@@ -166,7 +185,8 @@ for i = 1:size(mainColorList,1)
     saliencyList(i) = saliencySum;
 end
 
-%we need to smooth the saliency list
+% Step 8: Smooth saliency values using spatial coherence
+% Each color's saliency is refined by its neighbors in color space
 m = ceil(length(saliencyList) / 4);
 newSaliencyList = size(saliencyList);
 for i = 1:length(saliencyList)
@@ -183,7 +203,7 @@ for i = 1:length(saliencyList)
     newSaliencyList(i) = newSaliencySum / ((m-1)*T);
 end
 
-%create the saliency space
+% Step 9: Create saliency map
 saliencySpace = zeros(12,12,12);
 for i = 1:size(mainColorList,1)
     tmp = mainColorList(i,1:3);
@@ -208,82 +228,26 @@ end
 saliencyIm = saliencyIm / theSaliencyMax;
 saliency = saliencyIm;
 
-
-%this part show one color
-%mat = ones(300,300,3);
-%colorNUM = 3;
-%mat(:,:,1) = mat(:,:,1) * (rareColorList(colorNUM,1) - 1)*23;
-%mat(:,:,2) = mat(:,:,2) * (rareColorList(colorNUM,2) - 1)*23;
-%mat(:,:,3) = mat(:,:,3) * (rareColorList(colorNUM,3) - 1)*23;
-%mat = uint8(mat);
-%figure
-%imshow(mat)
-
-
-
-
+% Step 10: Threshold saliency map to create binary mask
 saliencySorted = sort(saliency(:),'descend');
 percentageThreshold = 0.20;
 threshold = saliencySorted(floor(percentageThreshold*length(saliencySorted)));
 
-OtsuThreshold = graythresh(saliency);
-BW_otsu = im2bw(saliency,OtsuThreshold);
 
-
-%BW = BW_otsu;
 BW = im2bw(saliency, threshold);
 
+% Step 11: Morphological operations to clean up the binary mask
 se = strel('disk',2);        
 BW_after_dilate = imdilate(BW,se);
-% BW = imdilate(BW,se);
 BW_after_dilate = imerode(BW_after_dilate,se);
 
-
-%find the largest one
+% Step 12: Extract the largest connected component as the salient region
 CC = bwconncomp(BW_after_dilate);
 numPixels = cellfun(@numel,CC.PixelIdxList);
-[biggest,idx] = max(numPixels);
+[~,idx] = max(numPixels);
 BW_with_biggest_CC = zeros(size(BW));
 BW_with_biggest_CC(CC.PixelIdxList{idx}) = 1;
 
 
-STATS = regionprops(BW_with_biggest_CC, 'BoundingBox');
-b = STATS.BoundingBox;
-boundingbox = [ceil(b(2)),ceil(b(1)),floor(b(4)),floor(b(3))];
-boundingbox(3) = boundingbox(1) + boundingbox(3) - 1;
-boundingbox(4) = boundingbox(2) + boundingbox(4) - 1;
-finalIm = drawRectangleOnImage(im,boundingbox);
+end
 
-toc
-%show  all the images
-subplot(3,3,1),
-imshow(im)
-title('1')
-
-subplot(3,3,2),
-imshow(quant_im_show)
-title('2')
-
-subplot(3,3,3),
-imshow(quant_im_reduce_toshow)
-title('3')
-
-subplot(3,3,4),
-imshow(saliency)
-title('4')
-
-subplot(3,3,5),
-imshow(BW)
-title('5')
-
-subplot(3,3,6),
-imshow(BW_after_dilate)
-title('6')
-
-subplot(3,3,7),
-imshow(BW_with_biggest_CC)
-title('7')
-
-
-figure
-imshow(finalIm)
